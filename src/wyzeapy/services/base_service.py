@@ -16,7 +16,7 @@ from ..const import PHONE_SYSTEM_TYPE, APP_VERSION, APP_VER, PHONE_ID, APP_NAME,
 from ..crypto import olive_create_signature
 from ..payload_factory import olive_create_hms_patch_payload, olive_create_hms_payload, \
     olive_create_hms_get_payload, ford_create_payload, olive_create_get_payload, olive_create_post_payload, \
-    olive_create_user_info_payload
+    olive_create_user_info_payload, ford_create_signature
 from ..types import PropertyIDs, Device
 from ..utils import check_for_errors_standard, check_for_errors_hms, check_for_errors_lock, \
     check_for_errors_iot, wyze_encrypt
@@ -57,42 +57,49 @@ class BaseService:
     async def set_push_info(self, on: bool) -> None:
         await self._auth_lib.refresh_if_should()
 
-        url = "https://api.wyzecam.com/app/user/set_push_info"
+        url = "https://beta-platform-service.wyzecam.com/app/v2/platform/set_message_setting"
         payload = {
-            "phone_system_type": PHONE_SYSTEM_TYPE,
-            "app_version": APP_VERSION,
-            "app_ver": APP_VER,
-            "push_switch": "1" if on else "2",
-            "sc": SC,
-            "ts": int(time.time()),
-            "sv": SV,
-            "access_token": self._auth_lib.token.access_token,
-            "phone_id": PHONE_ID,
-            "app_name": APP_NAME
+            "is_enabled_notification": "false",
+            "nonce": "1718913567551",
+            "off_until_timestamp": "0"
         }
 
-        response_json = await self._auth_lib.post(url, json=payload)
+        sig = ford_create_signature("/app/v2/platform/set_message_setting", "post", payload)
+        print(sig)
+
+        signature2 = olive_create_signature(payload=payload, access_token="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImM5YmY2ZTM4LTRhNDItNDgxOS05ZDdiLWQwM2U5OTNjZjc1OSJ9.eyJhdWQiOlsib2F1dGgyLXJlc291cmNlIl0sInVzZXJfaWQiOiJjODIzMmU4M2MwZmE0YjVlMWNjNjIyOWQwMGFmZmYyNiIsInVzZXJfbmFtZSI6Imt5bGFuamFlZ2VyQGdtYWlsLmNvbSIsInNjb3BlIjpbImF1dGhjb2RlLXJlYWQiLCJlbWFpbCIsIm5hdGl2ZSIsIm9wZW5pZCJdLCJpc3MiOiJodHRwczovL2JldGEtb2F1dGguYXBpLnd5emUuY29tIiwiY3JlYXRlZF9hdCI6MTcxODkxMzM3OSwiZXhwIjoxNzE5MDg2MTc5LCJhdXRob3JpdGllcyI6WyJVU0VSIl0sImp0aSI6Im9qWEFfa3VqbDI0MjVqVjhNM3RsZTlfaDctRSIsImNsaWVudF9pZCI6IjY4OTAwYTA5LWFiZmEtNDcyZC1hMzBkLTI3YWU1M2MyMDVhNiJ9.RrOztb1OvL-CoVf-6IbQFdOXMLOoSQrrBP08vKqYT_7_3ZAlSrFqsePRRpGhB4v1YEKn5F0mlOFvOeeie8-yF1WaAR_FqZNYVlcsp2vrlQZ60G3XYPjqg9RvsQ05uicvFGcaCSTq8lRE6bAO1YTLMiExk2MMuaAWUfxC3CqATN30-CAs4K0gC2nEqOdW_8x-J3hAEWImPSHvaJNP9LthwgMYFIljeudU0TVrkAj6oL2I4IWRLVdBjUqfA-PheSUfsRmazRN6s2lHiG_8TKw8SwvNP0giFOuU_F4ta_O0XxW0--dVglEbUG6_MgtF2lil1iesQ9yGJOCKWHe4p8ppdg")
+        headers = {
+            "access_token": self._auth_lib.token.access_token,
+            "appid": "9319141212m2ik",
+            "phoneid": "0cdde8cc-f107-47e2-b3b2-e0afb4da9b60",
+            "appinfo": "wyze_android_3.0.0.b489",
+            "signature2": sig,
+            "requestid": "b5d48a0213a309e8d2df1689c46645be"
+        }
+        # print(headers)
+
+        response_json = await self._auth_lib.post(url, json=payload, headers=headers)
 
         check_for_errors_standard(self, response_json)
 
     async def get_user_profile(self) -> Dict[Any, Any]:
         await self._auth_lib.refresh_if_should()
 
-        payload = olive_create_user_info_payload()
-        signature = olive_create_signature(payload, self._auth_lib.token.access_token)
+        payload = {}
+        signature2 = olive_create_signature(payload, self._auth_lib.token.access_token)
         headers = {
-            'Accept-Encoding': 'gzip',
-            'User-Agent': 'myapp',
-            'appid': OLIVE_APP_ID,
-            'appinfo': APP_INFO,
-            'phoneid': PHONE_ID,
-            'access_token': self._auth_lib.token.access_token,
-            'signature2': signature
+            "access_token": self._auth_lib.token.access_token,
+            "appid": OLIVE_APP_ID,
+            "phoneid": PHONE_ID,
+            "appinfo": APP_INFO,
+            "signature2": signature2,
         }
 
-        url = 'https://wyze-platform-service.wyzecam.com/app/v2/platform/get_user_profile'
+        url = f'https://beta-platform-service.wyzecam.com/app/v2/platform/get_message_setting?nonce={time.time()}'
 
         response_json = await self._auth_lib.get(url, headers=headers, params=payload)
+
+        check_for_errors_standard(self, response_json)
 
         return response_json
 

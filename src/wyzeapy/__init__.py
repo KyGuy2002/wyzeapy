@@ -161,7 +161,7 @@ class Wyzeapy:
         """
 
         response_json = await self._service.get_user_profile()
-        return response_json['data']['notification']
+        return response_json['data']['is_enabled_notification']
 
     async def enable_notifications(self):
         """Enables notifications on the account"""
